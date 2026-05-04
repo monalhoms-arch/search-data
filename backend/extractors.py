@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import fitz  # PyMuPDF
 import io
+import docx
 
 def extract_text_from_url(url: str) -> str:
     """Fetches a URL and extracts clean text from the HTML."""
@@ -34,3 +35,14 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
         return text.strip()
     except Exception as e:
         raise Exception(f"Failed to extract text from PDF: {str(e)}")
+
+def extract_text_from_docx(file_bytes: bytes) -> str:
+    """Extracts text from DOCX bytes."""
+    try:
+        doc = docx.Document(io.BytesIO(file_bytes))
+        text = []
+        for paragraph in doc.paragraphs:
+            text.append(paragraph.text)
+        return '\n'.join(text)
+    except Exception as e:
+        raise Exception(f"Failed to extract text from DOCX: {str(e)}")

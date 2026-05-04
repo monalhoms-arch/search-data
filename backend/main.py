@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from search_engine import SmartSearchEngine
-from extractors import extract_text_from_url, extract_text_from_pdf
+from extractors import extract_text_from_url, extract_text_from_pdf, extract_text_from_docx
 app = FastAPI(title="Smart AI Search Engine API")
 
 # Setup CORS for the frontend
@@ -62,8 +62,10 @@ async def index_file(file: UploadFile = File(...), title: Optional[str] = Form(N
             content = extract_text_from_pdf(file_bytes)
         elif file.filename.lower().endswith(".txt"):
             content = file_bytes.decode("utf-8")
+        elif file.filename.lower().endswith(".docx"):
+            content = extract_text_from_docx(file_bytes)
         else:
-            raise HTTPException(status_code=400, detail="Unsupported file type. Please upload PDF or TXT.")
+            raise HTTPException(status_code=400, detail="Unsupported file type. Please upload PDF, TXT, or DOCX.")
             
         doc_title = title if title else file.filename
         doc_id = search_engine.index_document(doc_title, content, file.filename)

@@ -112,7 +112,7 @@ function App() {
       setFileTitle('');
     } catch (error) {
       console.error("File Indexing error:", error);
-      showToast(error.response?.data?.detail || "Error indexing file. Ensure it's a PDF or TXT.");
+      showToast(error.response?.data?.detail || "Error indexing file. Ensure it's a PDF, TXT, or DOCX.");
     } finally {
       setIsIndexing(false);
     }
@@ -299,13 +299,13 @@ function App() {
               {adminTab === 'file' && (
                 <form onSubmit={handleIndexFile} className="fade-in">
                   <div className="form-group">
-                    <label className="form-label">Upload File (PDF or TXT)</label>
+                    <label className="form-label">Upload File (PDF, TXT, DOCX)</label>
                     <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' }}>
                       Upload a document. The AI will extract the text content and index it.
                     </p>
                     <input
                       type="file"
-                      accept=".pdf,.txt"
+                      accept=".pdf,.txt,.docx"
                       className="form-input"
                       onChange={(e) => setFile(e.target.files[0])}
                       required
