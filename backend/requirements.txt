@@ -4,3 +4,7 @@ pydantic
 sentence-transformers
 faiss-cpu
 numpy
+beautifulsoup4
+requests
+PyMuPDF
+python-multipart
