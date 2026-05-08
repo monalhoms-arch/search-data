@@ -1,20 +1,35 @@
+from __future__ import annotations
 import os
 import json
+from typing import List, Dict, Any, Optional, Union
+
+# pyrefly: ignore [missing-import]
 import numpy as np
+# pyrefly: ignore [missing-import]
 import faiss
+# pyrefly: ignore [missing-import]
 from sentence_transformers import SentenceTransformer
 
+# Get absolute path to the project root to ensure data files are always found
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_DATA_DIR = os.path.join(BASE_DIR, "data")
+
 class SmartSearchEngine:
-    def __init__(self, model_name="all-MiniLM-L6-v2", data_dir="../data"):
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2", data_dir: Optional[str] = None):
+        """
+        Initializes the search engine.
+        :param model_name: The SentenceTransformer model to use.
+        :param data_dir: Directory to store index and metadata. Defaults to project_root/data.
+        """
+        self.data_dir = data_dir if data_dir else DEFAULT_DATA_DIR
         self.model = SentenceTransformer(model_name)
-        self.data_dir = data_dir
-        self.index_path = os.path.join(data_dir, "faiss_index.bin")
-        self.meta_path = os.path.join(data_dir, "metadata.json")
+        self.index_path = os.path.join(self.data_dir, "faiss_index.bin")
+        self.meta_path = os.path.join(self.data_dir, "metadata.json")
         
         # Ensure data directory exists
         os.makedirs(self.data_dir, exist_ok=True)
         
-        self.dimension = self.model.get_sentence_embedding_dimension()
+        self.dimension = self.model.get_embedding_dimension()
         self.index = faiss.IndexFlatL2(self.dimension)
         self.metadata = []
         
@@ -36,7 +51,7 @@ class SmartSearchEngine:
         with open(self.meta_path, 'w', encoding='utf-8') as f:
             json.dump(self.metadata, f, ensure_ascii=False, indent=2)
 
-    def index_document(self, title: str, content: str, url: str = ""):
+    def index_document(self, title: str, content: str, url: str = "") -> List[int]:
         """Indexes a document by splitting it into smaller chunks for better search accuracy."""
         # Split content into chunks of roughly 500-1000 characters
         # This improves semantic search for specific parts of large documents
@@ -65,7 +80,7 @@ class SmartSearchEngine:
         self._save_index()
         return doc_ids
 
-    def _chunk_text(self, text, chunk_size=800, overlap=100):
+    def _chunk_text(self, text: str, chunk_size: int = 800, overlap: int = 100) -> List[str]:
         """Splits text into overlapping chunks."""
         chunks = []
         if not text:
@@ -78,7 +93,7 @@ class SmartSearchEngine:
             start += chunk_size - overlap
         return chunks
 
-    def search(self, query: str, top_k: int = 10):
+    def search(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
         """Performs a hybrid search (semantic + keyword)."""
         if self.index.ntotal == 0 or not self.metadata:
             return []
@@ -135,7 +150,7 @@ class SmartSearchEngine:
         sorted_results = sorted(results_map.values(), key=lambda x: x["score"], reverse=True)
         return sorted_results[:top_k]
 
-    def get_all_documents(self):
+    def get_all_documents(self) -> List[Dict[str, Any]]:
         """Returns all valid documents."""
         docs = []
         for doc in self.metadata:

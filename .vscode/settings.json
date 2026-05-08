@@ -1,0 +1,11 @@
+{
+    "python.defaultInterpreterPath": "C:\\Projects\\search\\backend\\venv\\Scripts\\python.exe",
+    "python.analysis.extraPaths": [
+        "C:\\Projects\\search\\backend"
+    ],
+    "python.autoComplete.extraPaths": [
+        "C:\\Projects\\search\\backend"
+    ],
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.analysis.typeCheckingMode": "basic"
+}

@@ -1,11 +1,15 @@
 import os
 import threading
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel
 from typing import List, Optional
 from search_engine import SmartSearchEngine
 from extractors import extract_text_from_url, extract_text_from_pdf, extract_text_from_docx
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,6 +17,7 @@ load_dotenv()
 # Setup Gemini Client if API key is present
 client = None
 try:
+    # pyrefly: ignore [missing-import]
     from google import genai
     if os.getenv("GEMINI_API_KEY"):
         client = genai.Client()
