@@ -56,7 +56,7 @@ class SmartSearchEngine:
         self._save_index()
         return doc_id
 
-    def search(self, query: str, top_k: int = 5):
+    def search(self, query: str, top_k: int = 10):
         """Searches for the most relevant documents."""
         if self.index.ntotal == 0:
             return []
@@ -71,14 +71,39 @@ class SmartSearchEngine:
         for i, idx in enumerate(indices[0]):
             if idx != -1 and idx < len(self.metadata): # -1 means not enough results
                 doc = self.metadata[idx]
-                results.append({
+                if doc is not None:
+                    results.append({
+                        "id": doc["id"],
+                        "title": doc["title"],
+                        "content": doc["content"],
+                        "url": doc["url"],
+                        "score": float(1.0 / (1.0 + distances[0][i])) # Convert distance to a simple similarity score
+                    })
+        return results
+
+    def get_all_documents(self):
+        """Returns all valid documents."""
+        docs = []
+        for doc in self.metadata:
+            if doc is not None:
+                # Omit full content for brevity in lists, just return snippet
+                snippet = doc["content"][:200] + "..." if len(doc["content"]) > 200 else doc["content"]
+                docs.append({
                     "id": doc["id"],
                     "title": doc["title"],
-                    "content": doc["content"],
-                    "url": doc["url"],
-                    "score": float(1.0 / (1.0 + distances[0][i])) # Convert distance to a simple similarity score
+                    "snippet": snippet,
+                    "url": doc["url"]
                 })
-        return results
+        # Return in reverse chronological order
+        return docs[::-1]
+
+    def delete_document(self, doc_id: int):
+        """Soft deletes a document by setting its metadata to None."""
+        if 0 <= doc_id < len(self.metadata):
+            self.metadata[doc_id] = None
+            self._save_index()
+            return True
+        return False
 
     def clear_index(self):
         """Clears the entire index."""

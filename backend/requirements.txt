@@ -9,3 +9,5 @@ requests
 PyMuPDF
 python-multipart
 python-docx
+google-genai
+python-dotenv

@@ -1,9 +1,25 @@
+import os
+import threading
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from search_engine import SmartSearchEngine
 from extractors import extract_text_from_url, extract_text_from_pdf, extract_text_from_docx
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Setup Gemini Client if API key is present
+client = None
+try:
+    from google import genai
+    if os.getenv("GEMINI_API_KEY"):
+        client = genai.Client()
+except ImportError:
+    pass
+
+
 app = FastAPI(title="Smart AI Search Engine API")
 
 # Setup CORS for the frontend
@@ -18,6 +34,48 @@ app.add_middleware(
 # Initialize Search Engine
 search_engine = SmartSearchEngine()
 
+def background_indexing_task():
+    print("Background indexing started...")
+    data_dir = "../data"
+    
+    if not os.path.exists(data_dir):
+        return
+
+    indexed_titles = {doc.get("title", "") for doc in search_engine.metadata}
+    
+    for filename in os.listdir(data_dir):
+        file_path = os.path.join(data_dir, filename)
+        if not os.path.isfile(file_path):
+            continue
+            
+        if filename in ["faiss_index.bin", "metadata.json"] or filename in indexed_titles:
+            continue
+            
+        print(f"Auto-indexing new file: {filename}")
+        try:
+            with open(file_path, "rb") as f:
+                file_bytes = f.read()
+                
+            content = ""
+            if filename.lower().endswith(".pdf"):
+                content = extract_text_from_pdf(file_bytes)
+            elif filename.lower().endswith(".docx"):
+                content = extract_text_from_docx(file_bytes)
+            elif filename.lower().endswith(".txt"):
+                content = file_bytes.decode("utf-8", errors="ignore")
+                
+            if content.strip():
+                search_engine.index_document(title=filename, content=content, url=filename)
+                print(f"Successfully auto-indexed: {filename}")
+        except Exception as e:
+            print(f"Error auto-indexing {filename}: {e}")
+
+@app.on_event("startup")
+def startup_event():
+    # Start the indexing process in a background thread so it doesn't block the API
+    thread = threading.Thread(target=background_indexing_task, daemon=True)
+    thread.start()
+
 class DocumentInput(BaseModel):
     title: str
     content: str
@@ -25,7 +83,7 @@ class DocumentInput(BaseModel):
 
 class SearchQuery(BaseModel):
     query: str
-    top_k: int = 5
+    top_k: int = 10
 
 class UrlInput(BaseModel):
     url: str
@@ -77,9 +135,48 @@ async def index_file(file: UploadFile = File(...), title: Optional[str] = Form(N
 def search(query: SearchQuery):
     try:
         results = search_engine.search(query.query, query.top_k)
-        return {"status": "success", "results": results}
+        
+        ai_summary = None
+        if client and results:
+            # Combine top 3 results for context to avoid exceeding token limits
+            context_texts = [f"Source: {r.get('title')}\nContent: {r.get('content')}" for r in results[:3]]
+            context = "\n\n".join(context_texts)
+            
+            prompt = f"Answer the user's question based ONLY on the following context. If the answer is not in the context, say 'I cannot find the answer in the provided documents.'\n\nContext:\n{context}\n\nQuestion: {query.query}\n\nAnswer:"
+            
+            try:
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                )
+                ai_summary = response.text
+            except Exception as e:
+                print(f"Gemini API Error: {e}")
+                ai_summary = "Failed to generate AI summary. Please check your API key."
+
+        return {"status": "success", "results": results, "ai_summary": ai_summary}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/documents")
+def get_documents():
+    try:
+        docs = search_engine.get_all_documents()
+        return {"status": "success", "documents": docs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/documents/{doc_id}")
+def delete_document(doc_id: int):
+    try:
+        success = search_engine.delete_document(doc_id)
+        if success:
+            return {"status": "success", "message": "Document deleted"}
+        else:
+            raise HTTPException(status_code=404, detail="Document not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.delete("/clear")
 def clear_index():
