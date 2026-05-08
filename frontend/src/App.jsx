@@ -136,8 +136,10 @@ function App() {
 
   // Helper to highlight terms
   const highlightText = (text, highlight) => {
-    if (!highlight.trim()) return text;
-    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+    if (!highlight || !highlight.trim()) return text;
+    // Escape special regex characters to prevent crashes
+    const escapedHighlight = highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const parts = text.split(new RegExp(`(${escapedHighlight})`, 'gi'));
     return parts.map((part, i) => 
       part.toLowerCase() === highlight.toLowerCase() ? 
       <span key={i} className="highlight">{part}</span> : part

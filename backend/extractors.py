@@ -37,12 +37,23 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
         raise Exception(f"Failed to extract text from PDF: {str(e)}")
 
 def extract_text_from_docx(file_bytes: bytes) -> str:
-    """Extracts text from DOCX bytes."""
+    """Extracts text from DOCX bytes including paragraphs and tables."""
     try:
         doc = docx.Document(io.BytesIO(file_bytes))
         text = []
+        
+        # Extract from paragraphs
         for paragraph in doc.paragraphs:
-            text.append(paragraph.text)
+            if paragraph.text.strip():
+                text.append(paragraph.text)
+        
+        # Extract from tables
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                if row_text:
+                    text.append(" | ".join(row_text))
+                    
         return '\n'.join(text)
     except Exception as e:
         raise Exception(f"Failed to extract text from DOCX: {str(e)}")

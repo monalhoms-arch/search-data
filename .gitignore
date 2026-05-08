@@ -9,3 +9,8 @@ frontend/dist/
 
 # Env
 .env
+
+# Search Data
+data/
+scratch/
+.ipynb_checkpoints/

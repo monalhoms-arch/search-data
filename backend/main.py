@@ -41,7 +41,7 @@ def background_indexing_task():
     if not os.path.exists(data_dir):
         return
 
-    indexed_titles = {doc.get("title", "") for doc in search_engine.metadata}
+    indexed_titles = {doc.get("title", "") for doc in search_engine.metadata if doc is not None}
     
     for filename in os.listdir(data_dir):
         file_path = os.path.join(data_dir, filename)
@@ -142,11 +142,21 @@ def search(query: SearchQuery):
             context_texts = [f"Source: {r.get('title')}\nContent: {r.get('content')}" for r in results[:3]]
             context = "\n\n".join(context_texts)
             
-            prompt = f"Answer the user's question based ONLY on the following context. If the answer is not in the context, say 'I cannot find the answer in the provided documents.'\n\nContext:\n{context}\n\nQuestion: {query.query}\n\nAnswer:"
+            prompt = f"""
+Answer the following question using ONLY the provided context. 
+If the answer is not contained in the context, clearly state that you don't know based on the documents.
+Be concise, accurate, and professional. If the question is in Arabic, respond in Arabic.
+
+Context:
+{context}
+
+Question: {query.query}
+
+Answer:"""
             
             try:
                 response = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-2.0-flash',
                     contents=prompt,
                 )
                 ai_summary = response.text
